@@ -1,0 +1,55 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SecurePasteBox</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.orange.min.css">
+    <style>
+        main {
+            max-width: 600px;
+            margin: auto;
+            padding-top: 3rem;
+        }
+
+        textarea {
+            min-height: 150px;
+        }
+
+        #output {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>SecurePasteBox</h1>
+        <div id="create-section" hidden>
+            <form id="create-form">
+                <label for="secret">Enter your secret:</label>
+                <textarea id="secret" required></textarea>
+                <button type="submit">Generate Secure Link</button>
+            </form>
+            <p><small>Your secret is encrypted <strong>in your browser</strong>. The server never sees it.</small></p>
+            <div id="link-container" hidden>
+                <label for="secure-link">Your secure link:</label>
+                <input id="secure-link" readonly />
+                <button type="button" id="copy-link">Copy to Clipboard</button>
+            </div>
+        </div>
+
+        <div id="read-section" hidden>
+            <p><strong>Warning:</strong> This secret can be viewed only once. After clicking, the decryption key will be destroyed.</p>
+            <button id="reveal-button">Reveal Secret</button>
+            <div id="output-container" hidden>
+                <label for="output">Your secret:</label>
+                <textarea id="output" readonly></textarea>
+                <button id="copy-secret">Copy to Clipboard</button>
+            </div>
+        </div>
+    </main>
+
+    <script src="scripts.js"></script>
+</body>
+</html>
