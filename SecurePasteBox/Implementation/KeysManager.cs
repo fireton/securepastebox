@@ -18,10 +18,10 @@ public class KeysManager(IKeyStorage keyStorage) : IKeysManager
         return key;
     }
 
-    public async Task<string> SaveKey(string key)
+    public async Task<string> SaveKey(string key, TimeSpan expiration)
     {
         var keyId = await Nanoid.GenerateAsync(IdAlphabet, IdSize);
-        await keyStorage.SaveKey(keyId, key);
+        await keyStorage.SaveKey(keyId, key, expiration);
         return keyId;
     }
 }

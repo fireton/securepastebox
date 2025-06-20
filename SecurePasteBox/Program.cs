@@ -6,6 +6,8 @@ namespace SecurePasteBox;
 
 public static class Program
 {
+    private static readonly  TimeSpan NoExpiration = TimeSpan.MaxValue;
+
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
@@ -19,8 +21,6 @@ public static class Program
         var app = builder.Build();
         app.UseRateLimiter();
 
-        var pagesPath = Path.Combine(env.ContentRootPath, "Pages");
-
         app.MapGet("/api/health", () => Results.Ok("Healthy"));
 
         app.MapPost("/api/keys", async (HttpContext context) =>
@@ -33,7 +33,9 @@ public static class Program
                 return Results.BadRequest("Key cannot be empty.");
             }
 
-            var keyId = await keysManager.SaveKey(body.Key);
+            var keyId = await keysManager.SaveKey(
+                body.Key,
+                body.Expiration ?? NoExpiration);
 
             return Results.Ok(new { KeyId = keyId });
         });
@@ -49,15 +51,19 @@ public static class Program
             return Results.Ok(new { Key = key });
         }).WithKeyRetrievalRateLimit();
 
+        var pagesPath = env.IsDevelopment() // for easier development
+            ? Path.Combine(env.ContentRootPath, "Pages") 
+            : Path.Combine(AppContext.BaseDirectory, "Pages");
+
         app.UseDefaultFiles(new DefaultFilesOptions
         {
-            FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "Pages")),
+            FileProvider = new PhysicalFileProvider(pagesPath),
             RequestPath = ""
         });
 
         app.UseStaticFiles(new StaticFileOptions
         {
-            FileProvider = new PhysicalFileProvider(Path.Combine(Directory.GetCurrentDirectory(), "Pages")),
+            FileProvider = new PhysicalFileProvider(pagesPath),
             RequestPath = ""
         });
 
@@ -70,5 +76,5 @@ public static class Program
         app.Run();
     }
 
-    private sealed record KeyRequest(string Key);
+    private sealed record KeyRequest(string Key, TimeSpan? Expiration);
 }
