@@ -6,7 +6,7 @@ namespace SecurePasteBox;
 
 public static class Program
 {
-    private static readonly  TimeSpan NoExpiration = TimeSpan.MaxValue;
+    private static readonly TimeSpan NoExpiration = TimeSpan.MaxValue;
 
     public static void Main(string[] args)
     {
