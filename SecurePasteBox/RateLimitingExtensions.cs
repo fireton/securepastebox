@@ -6,7 +6,7 @@ public static class RateLimitingExtensions
 {
     private const string PolicyName = "KeyRetrievalPolicy";
 
-    public static IServiceCollection AddUniversalRateLimiter(this IServiceCollection services)
+    public static IServiceCollection AddUniversalRateLimiter(this IServiceCollection services, TimeSpan MinInterval)
     {
         services.AddRateLimiter(options =>
         {
@@ -19,7 +19,7 @@ public static class RateLimitingExtensions
                 {
                     TokenLimit = 1,
                     TokensPerPeriod = 1,
-                    ReplenishmentPeriod = TimeSpan.FromSeconds(5),
+                    ReplenishmentPeriod = MinInterval,
                     QueueProcessingOrder = QueueProcessingOrder.OldestFirst,
                     QueueLimit = 0,
                     AutoReplenishment = true

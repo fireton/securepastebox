@@ -40,7 +40,14 @@ public static class ConfigurationExtensions
     {
         try
         {
-            var converter = TypeDescriptor.GetConverter(typeof(T));
+            var targetType = typeof(T);
+
+            if (targetType.IsEnum)
+            {
+                return (T)Enum.Parse(targetType, value, ignoreCase: true);
+            }
+
+            var converter = TypeDescriptor.GetConverter(targetType);
             if (converter != null && converter.CanConvertFrom(typeof(string)))
             {
                 return (T)converter.ConvertFromInvariantString(value);

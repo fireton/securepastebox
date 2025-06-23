@@ -16,9 +16,15 @@ public class MemoryCacheKeyStorage(IMemoryCache memoryCache) : IKeyStorage
         return Task.FromResult(memoryCache.TryGetValue(keyId, out string value) ? value : null);
     }
 
-    public Task SaveKey(string id, string key, TimeSpan expiration)
+    public Task SaveKey(string id, string key, TimeSpan? expiration)
     {
-        memoryCache.Set(id, key, expiration);
+        if (expiration.HasValue)
+        {
+            memoryCache.Set(id, key, expiration.Value);
+            return Task.CompletedTask;
+        }
+
+        memoryCache.Set(id, key);
         return Task.CompletedTask;
     }
 }
