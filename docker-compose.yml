@@ -4,23 +4,17 @@ services:
     build:
       context: .
       dockerfile: SecurePasteBox/Dockerfile
+    ports:
+      - 9955:8080 
     environment:
-      - KEY_STORAGE_TYPE=Redis
-      - REDIS_CONFIGURATION=redis
-    depends_on:
-      - redis
-    networks:
-      - spb-network
-
-  redis:
-    image: redis:7-alpine
+      - KEY_STORAGE_TYPE=Files
     volumes:
-      - spb-redis-data:/data
+      - spb-data:/data
     networks:
       - spb-network
 
 volumes:
-  spb-redis-data:
+  spb-data:
 
 networks:
   spb-network:

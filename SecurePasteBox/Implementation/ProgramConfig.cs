@@ -5,20 +5,20 @@ public class ProgramConfig(IConfiguration configuration)
     public KeyStorageType KeyStorage { get; } = configuration.GetSetting("KeyStorage:Type", KeyStorageType.Memory);
     public TimeSpan DefaultExpiration { get; } = configuration.GetSetting("DefaultExpiration", TimeSpan.FromDays(7));
     public int MinIntervalSeconds { get; } = configuration.GetSetting("RateLimit:MinIntervalSeconds", 5);
-    public RedisSettings Redis { get; } = new RedisSettings(configuration);
+    public FilesSettings Files { get; } = new FilesSettings(configuration);
     public DataProtectionSettings DataProtection { get; } = new DataProtectionSettings(configuration);
 }
 
 public enum KeyStorageType
 {
     Memory,
-    Redis,
+    Files,
 }
 
-public class RedisSettings(IConfiguration configuration)
+public class FilesSettings(IConfiguration configuration)
 {
-    public string Configuration { get; set; } = configuration.GetSetting("Redis:Configuration");
-    public string InstanceName { get; set; } = configuration.GetSetting("Redis:InstanceName", "SecurePasteBox:");
+    public string DataDirectory { get; set; } = configuration.GetSetting("Files:DataDirectory", "/data");
+    public TimeSpan CleanupInterval { get; set; } = configuration.GetSetting("Files:CleanupInterval", TimeSpan.FromMinutes(5));
 }
 
 public class DataProtectionSettings(IConfiguration configuration)

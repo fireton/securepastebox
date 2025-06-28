@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.DataProtection.Repositories;
 using Microsoft.Extensions.FileProviders;
 using SecurePasteBox.Implementation;
+using SecurePasteBox.Implementation.FilesCache;
 
 namespace SecurePasteBox;
 
@@ -30,13 +31,8 @@ public static class Program
             case KeyStorageType.Memory:
                 builder.Services.AddDistributedMemoryCache();
                 break;
-            case KeyStorageType.Redis:
-                builder.Services.AddStackExchangeRedisCache(options =>
-                {
-                    options.Configuration = programConfig.Redis.Configuration
-                        ?? throw new InvalidOperationException("Redis connection string is not configured.");
-                    options.InstanceName = programConfig.Redis.InstanceName;
-                });
+            case KeyStorageType.Files:
+                builder.Services.AddFileDistributedCache(programConfig.Files.DataDirectory, programConfig.Files.CleanupInterval);
                 break;
             default:
                 throw new NotSupportedException($"Unsupported key storage type: {programConfig.KeyStorage}");
