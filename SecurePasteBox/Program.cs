@@ -1,4 +1,5 @@
-using System.Net;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.AspNetCore.DataProtection.Repositories;
 using Microsoft.Extensions.FileProviders;
 using SecurePasteBox.Implementation;
 
@@ -16,26 +17,30 @@ public static class Program
         builder.Services.AddMemoryCache();
         builder.Services.AddUniversalRateLimiter(TimeSpan.FromSeconds(programConfig.MinIntervalSeconds));
 
+        builder.Services.AddSingleton<IXmlRepository, DistributedCacheXmlRepository>();
+
+        builder.Services.AddDataProtection()
+            .SetApplicationName(programConfig.DataProtection.ApplicationName)
+            .PersistKeysToDistributedCache();
+
         builder.Services.AddSingleton<IKeysManager, KeysManager>();
 
         switch (programConfig.KeyStorage)
         {
-            case KeyStorageType.MemoryCache:
-                builder.Services.AddSingleton<IKeyStorage, MemoryCacheKeyStorage>();
+            case KeyStorageType.Memory:
+                builder.Services.AddDistributedMemoryCache();
                 break;
             case KeyStorageType.Redis:
-                throw new NotImplementedException("Redis key storage is not implemented yet.");
-                // builder.Services.AddSingleton<IKeyStorage, RedisKeyStorage>();
-                break;
-            case KeyStorageType.SQLite:
-                throw new NotImplementedException("SQLite key storage is not implemented yet.");
-                // builder.Services.AddSingleton<IKeyStorage, SQLiteKeyStorage>();
+                builder.Services.AddStackExchangeRedisCache(options =>
+                {
+                    options.Configuration = programConfig.Redis.Configuration
+                        ?? throw new InvalidOperationException("Redis connection string is not configured.");
+                    options.InstanceName = programConfig.Redis.InstanceName;
+                });
                 break;
             default:
                 throw new NotSupportedException($"Unsupported key storage type: {programConfig.KeyStorage}");
         }
-
-        builder.Services.AddSingleton<IKeyStorage, MemoryCacheKeyStorage>();
 
         var app = builder.Build();
         app.UseRateLimiter();
@@ -71,7 +76,7 @@ public static class Program
         }).WithKeyRetrievalRateLimit();
 
         var pagesPath = env.IsDevelopment() // for easier development
-            ? Path.Combine(env.ContentRootPath, "Pages") 
+            ? Path.Combine(env.ContentRootPath, "Pages")
             : Path.Combine(AppContext.BaseDirectory, "Pages");
 
         app.UseDefaultFiles(new DefaultFilesOptions

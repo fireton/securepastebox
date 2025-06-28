@@ -6,7 +6,7 @@ public static class ConfigurationExtensions
 {
     public static T GetSetting<T>(this IConfiguration configuration, string key, T defaultValue = default)
     {
-        var envVarName = configuration[$"{key}:EnvVar"];
+        var envVarName = configuration[$"{key}:EnvVarName"];
         if (!string.IsNullOrWhiteSpace(envVarName))
         {
             var envValue = Environment.GetEnvironmentVariable(envVarName);
@@ -22,10 +22,10 @@ public static class ConfigurationExtensions
             return ConvertTo<T>(value, $"Configuration value at '{key}'");
         }
 
-        var defaultFromConfig = configuration[$"{key}:Default"];
+        var defaultFromConfig = configuration[$"{key}:DefaultValue"];
         if (defaultFromConfig is not null)
         {
-            return ConvertTo<T>(defaultFromConfig, $"Default value at '{key}:Default'");
+            return ConvertTo<T>(defaultFromConfig, $"Default value at '{key}:DefaultValue'");
         }
 
         return defaultValue;
