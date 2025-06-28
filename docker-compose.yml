@@ -1,0 +1,27 @@
+services:
+  securepastebox:
+    image: ${DOCKER_REGISTRY-}securepastebox
+    build:
+      context: .
+      dockerfile: SecurePasteBox/Dockerfile
+    environment:
+      - KEY_STORAGE_TYPE=Redis
+      - REDIS_CONFIGURATION=redis
+    depends_on:
+      - redis
+    networks:
+      - spb-network
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - spb-redis-data:/data
+    networks:
+      - spb-network
+
+volumes:
+  spb-redis-data:
+
+networks:
+  spb-network:
+    name: securepastebox  
