@@ -1,5 +1,13 @@
-﻿const createSection = document.getElementById('create-section');
+﻿class UserFriendlyError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = "UserFriendlyError";
+    }
+}
+
+const createSection = document.getElementById('create-section');
 const readSection = document.getElementById('read-section');
+const errorSection = document.getElementById('error-section');
 
 const baseURL = window.location.origin;
 
@@ -7,7 +15,7 @@ function toBase64Url(bytes) {
     return btoa(String.fromCharCode(...bytes))
         .replace(/\+/g, "-")
         .replace(/\//g, "_")
-        .replace(/=+$/, ""); // убираем padding
+        .replace(/=+$/, ""); // removing padding
 }
 
 function fromBase64Url(base64url) {
@@ -15,7 +23,7 @@ function fromBase64Url(base64url) {
         .replace(/-/g, "+")
         .replace(/_/g, "/");
 
-    // восстановим padding
+    // restoring padding
     while (base64.length % 4 !== 0) {
         base64 += "=";
     }
@@ -48,14 +56,19 @@ const encrypt = async (plaintext, key) => {
 };
 
 const decrypt = async (data, key) => {
-    const iv = data.slice(0, 12);
-    const ciphertext = data.slice(12);
-    const plaintext = await crypto.subtle.decrypt(
-        { name: "AES-GCM", iv },
-        key,
-        ciphertext
-    );
-    return new TextDecoder().decode(plaintext);
+    try {
+        const iv = data.slice(0, 12);
+        const ciphertext = data.slice(12);
+        const plaintext = await crypto.subtle.decrypt(
+            { name: "AES-GCM", iv },
+            key,
+            ciphertext
+        );
+        return new TextDecoder().decode(plaintext);
+    }
+    catch {
+        throw new UserFriendlyError("We couldn’t read this secret. It may have been damaged or changed.");
+    }
 };
 
 const generateKey = async () =>
@@ -67,29 +80,68 @@ const exportKey = async (key) =>
 const importKey = async (base64) =>
     crypto.subtle.importKey("raw", Uint8Array.from(atob(base64), c => c.charCodeAt(0)), "AES-GCM", true, ["encrypt", "decrypt"]);
 
-const sendKeyToServer = async (base64Key) => {
+const sendKeyToServer = async (base64Key, expiration = "7.00:00:00") => {
     const res = await fetch('/api/keys', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: base64Key })
+        body: JSON.stringify({ key: base64Key, expiration })
     });
-    if (!res.ok) throw new Error('Failed to store key');
+    if (!res.ok) throw new UserFriendlyError('We couldn’t save your secret. Please try again in a moment.');
     const { keyId } = await res.json();
     return keyId;
 };
 
 const getKeyFromServer = async (keyId) => {
     const res = await fetch(`/api/keys/${keyId}`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Key not found or already used');
+    if (!res.ok) throw new UserFriendlyError('This secret is no longer available. It may have already been revealed or has expired.');
     const keydata = await res.json();
     return keydata.key;
 };
 
-// Logic
-const keyId = getKeyIdFromPath();
-const encrypted = encryptedFromHash();
+const showError = (message) => {
+    document.getElementById('create-section').hidden = true;
+    document.getElementById('read-section').hidden = true;
+    document.getElementById('error-section').hidden = false;
+    const errorText = document.getElementById('error-message');
+    errorText.textContent = message;
+};
 
-if (keyId && encrypted) {
+const handleException = (e) => {
+    if (e instanceof UserFriendlyError) {
+        showError(e.message);
+    } else {
+        console.error(e);
+        showError("An unexpected error occurred. Please try again.");
+    }
+};
+
+const processCreate = async () => {
+    createSection.hidden = false;
+    document.getElementById('link-container').hidden = true;
+    document.getElementById('create-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        try {
+            const plaintext = document.getElementById('secret').value;
+            const key = await generateKey();
+            const base64Key = await exportKey(key);
+            const expiration = document.getElementById('expiration').value;
+            const keyId = await sendKeyToServer(base64Key, expiration);
+            const encrypted = await encrypt(plaintext, key);
+            const link = `${baseURL}/${keyId}#${encrypted}`;
+            const input = document.getElementById('secure-link');
+            input.value = link;
+            document.getElementById('link-container').hidden = false;
+        } catch (e) {
+            handleException(e);
+        }
+    });
+
+    document.getElementById('copy-link').addEventListener('click', () => {
+        navigator.clipboard.writeText(document.getElementById('secure-link').value);
+    });
+}
+
+const processReveal = async (keyId, encrypted) => {
     readSection.hidden = false;
 
     document.getElementById('reveal-button').addEventListener('click', async () => {
@@ -98,33 +150,34 @@ if (keyId && encrypted) {
             const key = await importKey(base64Key);
             const secret = await decrypt(encrypted, key);
             document.getElementById('output').value = secret;
+            document.getElementById('reveal-section').hidden = true;
             document.getElementById('output-container').hidden = false;
         } catch (e) {
-            alert('Failed to reveal the secret: ' + e.message);
+            handleException(e);
         }
     });
 
     document.getElementById('copy-secret').addEventListener('click', () => {
         navigator.clipboard.writeText(document.getElementById('output').value);
     });
-
-} else {
-    createSection.hidden = false;
-
-    document.getElementById('create-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const plaintext = document.getElementById('secret').value;
-        const key = await generateKey();
-        const base64Key = await exportKey(key);
-        const keyId = await sendKeyToServer(base64Key);
-        const encrypted = await encrypt(plaintext, key);
-        const link = `${baseURL}/${keyId}#${encrypted}`;
-        const input = document.getElementById('secure-link');
-        input.value = link;
-        document.getElementById('link-container').hidden = false;
-    });
-
-    document.getElementById('copy-link').addEventListener('click', () => {
-        navigator.clipboard.writeText(document.getElementById('secure-link').value);
-    });
 }
+
+// Logic
+(async () => {
+    const keyId = getKeyIdFromPath();
+    let encrypted = null;
+
+    try {
+        encrypted = encryptedFromHash();
+    }
+    catch {
+        showError("The link seems broken or incomplete. Please check and try again.");
+        return;
+    }
+
+    if (keyId && encrypted) {
+        await processReveal(keyId, encrypted);
+    } else {
+        await processCreate();
+    }
+})();

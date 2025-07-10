@@ -20,14 +20,24 @@
             white-space: pre-wrap;
             word-break: break-word;
         }
+
+        h1 a:hover {
+            opacity: 0.8;
+        }
     </style>
 </head>
 <body>
     <main>
-        <h1>SecurePasteBox</h1>
+        <h1><a href="/" style="text-decoration: none; color: inherit;">SecurePasteBox</a></h1>
         <div id="create-section" hidden>
             <form id="create-form">
                 <textarea id="secret" placeholder="Enter your secret here..."></textarea>
+                <select id="expiration">
+                    <option value="01:00:00">Expires after 1 hour</option>
+                    <option value="1.00:00:00">Expires after 1 day</option>
+                    <option value="7.00:00:00" selected>Expires after 7 days</option>
+                    <option value="30.00:00:00">Expires after 30 days</option>
+                </select>
                 <button type="submit">Generate Secure Link</button>
             </form>
             <p><small>Your secret is encrypted <strong>in your browser</strong>. The server never sees it.</small></p>
@@ -39,13 +49,25 @@
         </div>
 
         <div id="read-section" hidden>
-            <p><strong>Warning:</strong> This secret can be viewed only once. After clicking, the decryption key will be destroyed.</p>
-            <button id="reveal-button">Reveal Secret</button>
+            <div id="reveal-section">
+                <p><strong>Warning:</strong> This secret can be viewed only once. After clicking, the decryption key will be destroyed.</p>
+                <button id="reveal-button">Reveal Secret</button>
+            </div>
             <div id="output-container" hidden>
                 <label for="output">Your secret:</label>
                 <textarea id="output" readonly></textarea>
                 <button id="copy-secret">Copy to Clipboard</button>
+                <button class="secondary" style="margin-left: 1rem;" onclick="window.location.href='/'">Create New Secret</button>
             </div>
+        </div>
+
+        <div id="error-section" hidden>
+            <article class="contrast" style="padding: 1rem; border-left: 4px solid #e63946;">
+                <p id="error-message">bla!</p>
+            </article>
+            <button class="secondary" onclick="window.location.href='/'">
+                Create New Secret
+            </button>
         </div>
     </main>
 
