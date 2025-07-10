@@ -19,16 +19,21 @@ function toBase64Url(bytes) {
 }
 
 function fromBase64Url(base64url) {
-    let base64 = base64url
-        .replace(/-/g, "+")
-        .replace(/_/g, "/");
+    try {
+        let base64 = base64url
+            .replace(/-/g, "+")
+            .replace(/_/g, "/");
 
-    // restoring padding
-    while (base64.length % 4 !== 0) {
-        base64 += "=";
+        // restoring padding
+        while (base64.length % 4 !== 0) {
+            base64 += "=";
+        }
+
+        return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
     }
-
-    return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    catch {
+        throw new UserFriendlyError("The link seems broken or contains invalid characters.")
+    }
 }
 
 const getKeyIdFromPath = () => {
@@ -36,9 +41,28 @@ const getKeyIdFromPath = () => {
     return match ? match[1] : null;
 };
 
-const encryptedFromHash = () => {
-    const hash = window.location.hash.slice(1);
-    return hash ? fromBase64Url(hash) : null;
+const generateHash = async (encrypted) => {
+    const digest = await crypto.subtle.digest("SHA-256", encrypted);
+    return toBase64Url(new Uint8Array(digest)).slice(0, 8);
+}
+
+const encryptedFromHash = async () => {
+    const hashPart = window.location.hash.slice(1);
+    if (!hashPart) return null;
+
+    const [encryptedBase64, hash] = hashPart.split('.');
+
+    if (!encryptedBase64 || !hash) {
+        throw new UserFriendlyError("The link seems broken or incomplete. Please check and try again.");
+    }
+
+    const encrypted = fromBase64Url(encryptedBase64);
+    const computedHash = await generateHash(encrypted);
+    if (computedHash !== hash) {
+        throw new UserFriendlyError("This link doesn’t look valid. It may be incomplete or has been changed.");
+    }
+
+    return encrypted;
 };
 
 const encrypt = async (plaintext, key) => {
@@ -52,7 +76,7 @@ const encrypt = async (plaintext, key) => {
     const combined = new Uint8Array(iv.byteLength + ciphertext.byteLength);
     combined.set(iv, 0);
     combined.set(new Uint8Array(ciphertext), iv.byteLength);
-    return toBase64Url(combined);
+    return combined;
 };
 
 const decrypt = async (data, key) => {
@@ -117,6 +141,7 @@ const handleException = (e) => {
 
 const processCreate = async () => {
     createSection.hidden = false;
+    document.getElementById('secret').value = '';
     document.getElementById('link-container').hidden = true;
     document.getElementById('create-form').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -127,7 +152,9 @@ const processCreate = async () => {
             const expiration = document.getElementById('expiration').value;
             const keyId = await sendKeyToServer(base64Key, expiration);
             const encrypted = await encrypt(plaintext, key);
-            const link = `${baseURL}/${keyId}#${encrypted}`;
+            const hashBase64 = await generateHash(encrypted);
+            const encryptedBase64 = toBase64Url(encrypted);
+            const link = `${baseURL}/${keyId}#${encryptedBase64}.${hashBase64}`;
             const input = document.getElementById('secure-link');
             input.value = link;
             document.getElementById('link-container').hidden = false;
@@ -168,10 +195,10 @@ const processReveal = async (keyId, encrypted) => {
     let encrypted = null;
 
     try {
-        encrypted = encryptedFromHash();
+        encrypted = await encryptedFromHash();
     }
-    catch {
-        showError("The link seems broken or incomplete. Please check and try again.");
+    catch (e) {
+        handleException(e);
         return;
     }
 
