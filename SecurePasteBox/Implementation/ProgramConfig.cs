@@ -7,6 +7,26 @@ public class ProgramConfig(IConfiguration configuration)
     public int MinIntervalSeconds { get; } = configuration.GetSetting("RateLimit:MinIntervalSeconds", 5);
     public FilesSettings Files { get; } = new FilesSettings(configuration);
     public DataProtectionSettings DataProtection { get; } = new DataProtectionSettings(configuration);
+    public string Theme { get; } = configuration.GetSetting("FrontEnd:Theme", "Basic");
+    public Dictionary<string, object> FrontEndSettings { get; } = ReadFrontendSettings(configuration);
+
+    private static Dictionary<string, object> ReadFrontendSettings(IConfiguration configuration)
+    {
+        var theme = configuration.GetSetting("FrontEnd:Theme", "Basic");
+        var section = configuration.GetSection($"FrontEnd:{theme}");
+
+        if (!section.Exists())
+        {
+            throw new InvalidOperationException($"Theme '{theme}' not found in configuration.");
+        }
+
+        return section.GetChildren()
+            .ToDictionary(
+                child => child.Key,
+                child => configuration.GetSetting(child.Path) ?? string.Empty as object,
+                StringComparer.OrdinalIgnoreCase);
+
+    }
 }
 
 public enum KeyStorageType

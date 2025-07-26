@@ -1,10 +1,10 @@
 ﻿<!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="{{ Theme }}">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SecurePasteBox</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.orange.min.css">
+    <title>{{ AppName }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.{{ ColorScheme }}.min.css">
     <style>
         main {
             max-width: 600px;
@@ -28,7 +28,7 @@
 </head>
 <body>
     <main>
-        <h1><a href="/" style="text-decoration: none; color: inherit;">SecurePasteBox</a></h1>
+        <h1><a href="/" style="text-decoration: none; color: inherit;">{{ AppName }}</a></h1>
         <div id="create-section" hidden>
             <form id="create-form">
                 <textarea id="secret" placeholder="Enter your secret here..."></textarea>

@@ -71,9 +71,7 @@ public static class Program
             return Results.Ok(new { Key = key });
         }).WithKeyRetrievalRateLimit();
 
-        var pagesPath = env.IsDevelopment() // for easier development
-            ? Path.Combine(env.ContentRootPath, "Pages")
-            : Path.Combine(AppContext.BaseDirectory, "Pages");
+        var pagesPath = Path.Combine(AppContext.BaseDirectory, "Pages");
 
         app.UseDefaultFiles(new DefaultFilesOptions
         {
@@ -87,10 +85,30 @@ public static class Program
             RequestPath = ""
         });
 
-        app.MapFallback(() =>
+        app.MapFallback(async () =>
         {
-            var indexPath = Path.Combine(pagesPath, "index.html");
-            return Results.File(indexPath, "text/html");
+            var templatePath = Path.Combine(
+                app.Environment.ContentRootPath, 
+                "Templates", 
+                programConfig.Theme, 
+                "index.sbn.html");
+
+            if (!File.Exists(templatePath))
+            {
+                return Results.NotFound("Template not found.");
+            }
+
+            var templateText = await File.ReadAllTextAsync(templatePath);
+            var template = Scriban.Template.Parse(templateText);
+
+            if (template.HasErrors)
+            {
+                return Results.Problem($"Template parse error:\n{string.Join("\n", template.Messages)}", statusCode: 500);
+            }
+
+            var html = template.Render(programConfig.FrontEndSettings);
+
+            return Results.Text(html, "text/html");
         });
 
         app.Run();
